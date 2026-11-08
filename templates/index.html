@@ -292,6 +292,76 @@
 
         }
 
+        @media(max-width: 900px) {
+
+            /* 16px stops iPhones zooming into fields; 44px is a comfortable tap target */
+            input, button {
+                font-size: 16px;
+            }
+
+            button {
+                min-height: 44px;
+            }
+
+            /* each table row becomes a labelled card */
+            table {
+                min-width: 0;
+            }
+
+            table, thead, tbody, tr, td {
+                display: block;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tr, tr:nth-child(even) {
+                background: #fff;
+                border: 1px solid #dce2e9;
+                border-radius: 10px;
+                margin: 10px 0;
+                padding: 6px 10px;
+            }
+
+            td {
+                border: 0;
+                padding: 6px 0;
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+                text-align: right;
+                overflow-wrap: anywhere;
+            }
+
+            td[data-label]::before {
+                content: attr(data-label);
+                font-weight: bold;
+                color: #243b55;
+                text-align: left;
+                flex: none;
+            }
+
+            td:last-child {
+                flex-wrap: wrap;
+                justify-content: flex-start;
+                text-align: left;
+            }
+
+        }
+
+        @media (pointer: coarse) {
+
+            input {
+                font-size: 16px;
+            }
+
+            button {
+                min-height: 44px;
+            }
+
+        }
+
     </style>
 
 </head>
@@ -485,7 +555,7 @@
             type="url"
             id="apiUrl"
             class="api-input"
-            placeholder="https://classmate-app.onrender.com/api/students"
+            placeholder="https://acti-9-maluneshapee.onrender.com/api/students"
         >
 
         <button
@@ -664,6 +734,30 @@ function createButton(label, className, callback) {
     button.addEventListener("click", callback);
 
     return button;
+
+}
+
+
+// STACKED-TABLE LABELS (phones show each row as a card)
+
+function labelCells(tbodyId) {
+
+    const body = document.getElementById(tbodyId);
+
+    const heads = [...body.closest("table").querySelectorAll("thead th")]
+        .map(th => th.textContent.trim());
+
+    body.querySelectorAll("tr").forEach(row => {
+
+        [...row.children].forEach((cell, index) => {
+
+            if (heads[index] && row.children.length === heads.length) {
+                cell.dataset.label = heads[index];
+            }
+
+        });
+
+    });
 
 }
 
@@ -855,6 +949,8 @@ function displayMyRecords(students) {
         );
 
     });
+
+    labelCells("myRecords");
 
 }
 
@@ -1222,6 +1318,8 @@ function displayClassmateRecords(records) {
         );
 
     });
+
+    labelCells("remoteRecords");
 
 }
 
