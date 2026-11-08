@@ -408,14 +408,12 @@ def send_to_partner():
             "error": "Please enter a valid Render API URL ending in /api/students."
         }), 400
 
-    record = {
-        "student_id": "EXT-001",
-        "name": "Sample Exchange Record",
-        "program": "BSIT",
-        "year": 1,
-        "section": "A",
-        "source": "Partner API"
-    }
+    record, error = validate_data((payload or {}).get("record"))
+
+    if error:
+        return jsonify({"error": error}), 400
+
+    record["source"] = "Partner API"
 
     try:
         response = requests.post(
@@ -430,11 +428,17 @@ def send_to_partner():
             "error": "Unable to reach partner API."
         }), 502
 
-    return jsonify({
+    result = {
         "partner_status": response.status_code,
         "partner_response": response.text,
         "sent": record
-    }), (response.status_code if response.status_code >= 400 else 200)
+    }
+
+    if response.status_code >= 400:
+        result["error"] = "Partner replied " + str(response.status_code) + ": " + response.text[:200]
+        return jsonify(result), response.status_code
+
+    return jsonify(result)
 
 
 # RUN APPLICATION

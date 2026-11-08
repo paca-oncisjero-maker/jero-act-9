@@ -241,6 +241,26 @@
 
         .details.dc-wrap { background: transparent; padding: 0; line-height: 1.4; white-space: normal; }
 
+        /* confirmation popup */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(17,24,39,0.5); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 1000; }
+        .modal { background: #fff; border-radius: 14px; max-width: 420px; width: 100%; padding: 22px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); }
+        .modal h3 { margin: 0 0 6px; font-size: 18px; color: #1f2937; }
+        .modal p { margin: 0 0 18px; color: #4b5563; font-size: 14px; line-height: 1.5; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+        .modal-actions button { margin: 0; padding: 9px 16px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }
+        .modal-cancel { background: #e8ecf3; color: #243b64; }
+        .modal-ok { background: #315b96; color: #fff; }
+        .modal-ok.danger { background: #c0392b; }
+
+        /* send result panel */
+        .sr { border: 1px solid #bbf7d0; background: #f0fdf4; border-radius: 12px; padding: 16px; margin-top: 12px; }
+        .sr-head { display: flex; gap: 12px; align-items: center; }
+        .sr-icon { width: 36px; height: 36px; border-radius: 50%; background: #16a34a; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; flex: none; }
+        .sr-title strong { display: block; color: #14532d; }
+        .sr-title small { color: #4b5563; }
+        .sr-note { margin: 10px 0 0; color: #166534; font-size: 14px; }
+        .send-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+
         footer {
             text-align: center;
             padding: 15px;
@@ -486,14 +506,6 @@
 
         <button
             type="button"
-            class="btn-edit"
-            id="sendBtn"
-        >
-            Send Practice Record
-        </button>
-
-        <button
-            type="button"
             class="btn-cancel"
             id="shareBtn"
             onclick="shareMyApi()"
@@ -536,6 +548,61 @@
         <div id="remoteDetails" class="details" hidden></div>
 
         <p id="remoteMessage" class="message" aria-live="polite"></p>
+
+    </section>
+
+
+    <!-- SEND A RECORD TO PARTNER -->
+
+    <section class="card">
+
+        <h2>Send a Record to Partner</h2>
+
+        <p class="description">
+            Fill in a fictional record and send it to the partner URL entered above.
+            Confirm with your partner before sending.
+        </p>
+
+        <div class="form-grid">
+
+                <div>
+                    <label for="send_id">Student ID</label>
+                    <input type="text" id="send_id" value="EXT-001" >
+                </div>
+
+                <div>
+                    <label for="send_name">Name</label>
+                    <input type="text" id="send_name" value="Rico Dela Vega" >
+                </div>
+
+                <div>
+                    <label for="send_program">Program</label>
+                    <input type="text" id="send_program" value="BSIT" >
+                </div>
+
+                <div>
+                    <label for="send_year">Year</label>
+                    <input type="number" id="send_year" value="1" min="1" step="1">
+                </div>
+
+                <div>
+                    <label for="send_section">Section</label>
+                    <input type="text" id="send_section" value="A" >
+                </div>
+
+        </div>
+
+        <button
+            type="button"
+            class="btn-edit"
+            id="sendBtn"
+        >
+            Send Record to Partner
+        </button>
+
+        <p id="sendMessage" class="message" aria-live="polite"></p>
+
+        <div id="sendResult"></div>
 
     </section>
 
@@ -924,7 +991,17 @@ document.getElementById("cancelBtn")
 
 async function deleteStudent(id) {
 
-    if (!confirm("Are you sure you want to delete this student?")) {
+    const target = studentsData.find(student => student.id === id);
+
+    const proceed = await confirmDialog(
+        "Delete this record?",
+        (target ? target.name + " (" + target.student_id + ") " : "This record ") +
+        "will be removed from your database. This cannot be undone.",
+        "Delete",
+        true
+    );
+
+    if (!proceed) {
         return;
     }
 
@@ -1202,14 +1279,140 @@ async function saveToMyDatabase(student, button) {
 
 // SEND A PRACTICE RECORD TO THE PARTNER
 
+function confirmDialog(title, text, okLabel, danger) {
+    return new Promise(resolve => {
+        const el = (tag, cls, content) => {
+            const node = document.createElement(tag);
+            if (cls) node.className = cls;
+            if (content !== undefined) node.textContent = content;
+            return node;
+        };
+
+        const overlay = el('div', 'modal-overlay');
+        const box = el('div', 'modal');
+        box.setAttribute('role', 'dialog');
+        box.setAttribute('aria-modal', 'true');
+
+        const cancel = el('button', 'modal-cancel', 'Cancel');
+        const ok = el('button', 'modal-ok' + (danger ? ' danger' : ''), okLabel || 'OK');
+        cancel.type = ok.type = 'button';
+
+        const onKey = event => { if (event.key === 'Escape') done(false); };
+        const done = value => {
+            document.removeEventListener('keydown', onKey);
+            overlay.remove();
+            resolve(value);
+        };
+
+        cancel.onclick = () => done(false);
+        ok.onclick = () => done(true);
+        overlay.addEventListener('click', event => { if (event.target === overlay) done(false); });
+        document.addEventListener('keydown', onKey);
+
+        const actions = el('div', 'modal-actions');
+        actions.append(cancel, ok);
+        box.append(el('h3', '', title), el('p', '', text), actions);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        cancel.focus();
+    });
+}
+
+const HTTP_TEXT = {200: 'OK', 201: 'Created', 400: 'Bad Request', 404: 'Not Found',
+                   409: 'Conflict', 500: 'Server Error', 502: 'Bad Gateway'};
+
+// Partner replies are JSON text (or an object); show only the readable message.
+function parseReply(raw) {
+    if (typeof raw === 'string') {
+        try { raw = JSON.parse(raw); } catch (error) { return {message: raw}; }
+    }
+    return raw || {};
+}
+
+function replyText(raw) {
+    const reply = parseReply(raw);
+    return reply.message || reply.error || 'No message';
+}
+
+function renderSendResult(container, sent, status, raw) {
+    const el = (tag, cls, content) => {
+        const node = document.createElement(tag);
+        if (cls) node.className = cls;
+        if (content !== undefined) node.textContent = content;
+        return node;
+    };
+
+    const reply = parseReply(raw);
+    const storedId = reply.id ?? (reply.student && reply.student.id);
+
+    const title = el('div', 'sr-title');
+    title.append(
+        el('strong', '', 'Record sent to partner'),
+        el('small', '', 'Partner replied ' + status + ' ' + (HTTP_TEXT[status] || ''))
+    );
+
+    const head = el('div', 'sr-head');
+    head.append(el('div', 'sr-icon', '\u2713'), title);
+
+    const grid = el('div', 'dc-grid');
+    [
+        ['Student ID', sent.student_id],
+        ['Name', sent.name],
+        ['Program', sent.program],
+        ['Year', sent.year],
+        ['Section', sent.section],
+        ['Source', sent.source || 'Partner API']
+    ].forEach(([label, value]) => {
+        const field = el('div', 'dc-field');
+        field.append(el('span', 'dc-label', label), el('span', 'dc-value', value ?? 'N/A'));
+        grid.appendChild(field);
+    });
+
+    const panel = el('div', 'sr');
+    panel.append(head, grid, el('p', 'sr-note',
+        replyText(raw) + (storedId !== undefined ? ' (stored as ID ' + storedId + ')' : '')));
+    container.replaceChildren(panel);
+}
+
 async function sendPracticeRecord() {
 
-    const message = document.getElementById("remoteMessage");
+    const message = document.getElementById("sendMessage");
     const button = document.getElementById("sendBtn");
+    const url = document.getElementById("apiUrl").value.trim();
 
+    const record = {
+        student_id: document.getElementById("send_id").value.trim(),
+        name: document.getElementById("send_name").value.trim(),
+        program: document.getElementById("send_program").value.trim(),
+        year: Number(document.getElementById("send_year").value),
+        section: document.getElementById("send_section").value.trim()
+    };
+
+    if (!url) {
+        showMessage(message, "Enter your partner's API URL in Partner Records first.", "error");
+        return;
+    }
+
+    if (!record.student_id || !record.name || !record.program || !record.section || !(record.year >= 1)) {
+        showMessage(message, "Fill in every field of the record first.", "error");
+        return;
+    }
+
+    const proceed = await confirmDialog(
+        "Send this record?",
+        record.name + " (" + record.student_id + ") will be sent to " +
+        new URL(url).hostname + ". Only send to your assigned partner.",
+        "Send"
+    );
+
+    if (!proceed) {
+        return;
+    }
+
+    document.getElementById("sendResult").replaceChildren();
     button.disabled = true;
 
-    showMessage(message, "Sending practice record...");
+    showMessage(message, "Sending record...");
 
     try {
 
@@ -1221,17 +1424,17 @@ async function sendPracticeRecord() {
                 "Content-Type": "application/json"
             },
 
-            body: JSON.stringify({
-                url: document.getElementById("apiUrl").value.trim()
-            })
+            body: JSON.stringify({url: url, record: record})
 
         });
 
-        showMessage(
-            message,
-            "Sent. Partner replied " + result.partner_status + ": " +
-            result.partner_response,
-            "success"
+        showMessage(message, "");
+
+        renderSendResult(
+            document.getElementById("sendResult"),
+            result.sent,
+            result.partner_status,
+            result.partner_response
         );
 
     } catch (error) {
