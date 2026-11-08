@@ -226,6 +226,21 @@
             color: #243b55;
         }
 
+        /* record detail card (View) */
+        .dc { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .dc-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .dc-avatar { width: 52px; height: 52px; border-radius: 50%; background: #243b55; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; flex: none; }
+        .dc-title { flex: 1 1 180px; min-width: 0; }
+        .dc-title strong { display: block; font-size: 18px; overflow-wrap: anywhere; }
+        .dc-title small { color: #6b7280; }
+        .dc-close { background: #e8ecf3; color: #243b64; border: none; border-radius: 8px; padding: 6px 12px; margin: 0; cursor: pointer; font-size: 13px; }
+        .dc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: 14px; }
+        .dc-field { background: #f6f8fb; border-radius: 8px; padding: 10px 12px; }
+        .dc-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7280; }
+        .dc-value { display: block; font-weight: 600; margin-top: 2px; overflow-wrap: anywhere; }
+
+        .details.dc-wrap { background: transparent; padding: 0; line-height: 1.4; white-space: normal; }
+
         footer {
             text-align: center;
             padding: 15px;
@@ -607,22 +622,55 @@ function sourceBadge(source) {
 
 // DISPLAY DETAILS
 
+function detailCard(student, onClose) {
+    const el = (tag, cls, text) => {
+        const node = document.createElement(tag);
+        if (cls) node.className = cls;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    };
+
+    const initials = String(student.name || '?').trim().split(/\s+/)
+        .slice(0, 2).map(word => word[0]).join('').toUpperCase();
+
+    const title = el('div', 'dc-title');
+    title.append(
+        el('strong', '', student.name || 'N/A'),
+        el('small', '', 'Student ID: ' + (student.student_id ?? 'N/A'))
+    );
+
+    const close = el('button', 'dc-close', 'Close');
+    close.type = 'button';
+    close.onclick = onClose;
+
+    const head = el('div', 'dc-head');
+    head.append(el('div', 'dc-avatar', initials), title, sourceBadge(student.source), close);
+
+    const grid = el('div', 'dc-grid');
+    [
+        ['Program', student.program],
+        ['Year', student.year],
+        ['Section', student.section],
+        ['Database ID', student.id]
+    ].forEach(([label, value]) => {
+        const field = el('div', 'dc-field');
+        field.append(el('span', 'dc-label', label), el('span', 'dc-value', value ?? 'N/A'));
+        grid.appendChild(field);
+    });
+
+    const card = el('div', 'dc');
+    card.append(head, grid);
+    return card;
+}
+
 function displayDetails(student, elementId) {
 
     const box = document.getElementById(elementId);
 
-    box.textContent =
-        "STUDENT DETAILS\n" +
-        "-------------------------\n" +
-        "Database ID: " + (student.id ?? "N/A") + "\n" +
-        "Student ID: " + (student.student_id ?? "N/A") + "\n" +
-        "Name: " + (student.name ?? "N/A") + "\n" +
-        "Program: " + (student.program ?? "N/A") + "\n" +
-        "Year: " + (student.year ?? "N/A") + "\n" +
-        "Section: " + (student.section ?? "N/A") + "\n" +
-        "Source: " + (student.source ?? "not provided");
-
+    box.classList.add("dc-wrap");
+    box.replaceChildren(detailCard(student, () => { box.hidden = true; }));
     box.hidden = false;
+    box.scrollIntoView({behavior: "smooth", block: "nearest"});
 
 }
 
